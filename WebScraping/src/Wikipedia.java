@@ -156,7 +156,13 @@ public class Wikipedia {
 			
 			//checks for may refer to page
 			if(formatted.equals(site + " may refer to:")) {
-				System.out.println("error: page not specific");
+				System.out.println("error: page not specific 1");
+				displayText = "We are having a hard time finding your page. Please be more specific";
+			}
+			
+			//checks if may also refer to page
+			else if(formatted.equals(site+ " may also refer to:")) {
+				System.out.println("error: page not specific 2");
 				displayText = "We are having a hard time finding your page. Please be more specific";
 			}
 			
@@ -164,8 +170,8 @@ public class Wikipedia {
 			else {
 				for(Element p : pTemp) {
 					
-					System.out.println("found an element");
-					System.out.println(p.nodeName());
+					//System.out.println("found an element");
+					//System.out.println(p.nodeName());
 					
 					if(p.nodeName().equals("p")) {
 						if(p.hasText() == true) {
