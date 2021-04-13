@@ -3,6 +3,9 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -23,6 +26,7 @@ public class WikiGame {
 	//VARIABLES
 	private final int WIDTH = 400, HEIGHT = 600, BORDER = 40, TEXT_HEIGHT = 20;
 	private String dG = "#006D77", lG = "#83C5BE", white = "#EDF6F9", black = "#222222";
+	private String displayText = "";
 	
 	//CONSTRUCTOR
 	public WikiGame() {
@@ -86,21 +90,6 @@ public class WikiGame {
 				runButton.setForeground(Color.decode(black));
 				runButton.setOpaque(true);
 				runButton.setBorderPainted(false);
-				runButton.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						
-						String start = format(startInput.getText());
-						
-						try {
-							getLinks(start);
-						} catch (IOException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-						
-					}
-					
-				});
 				topPanel.add(runButton);
 				
 				//SPACING
@@ -112,6 +101,37 @@ public class WikiGame {
 			displayPanel.setBackground(Color.decode(white));
 			displayPanel.setPreferredSize(new Dimension(WIDTH-BORDER, 440));
 			panel.add(displayPanel);
+				
+				//text area
+				JTextPane outputText = new JTextPane();
+				outputText.setBackground(Color.decode(white));
+				outputText.setForeground(Color.decode(black));
+				outputText.setPreferredSize(new Dimension(WIDTH-BORDER, 440));
+				outputText.setText(displayText);
+				outputText.setEditable(false);
+				displayPanel.add(outputText);
+			
+			//RUN FUNCTIONALITY
+			runButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					
+					//grab searchables
+					String start = format(startInput.getText());
+					String target = format(endInput.getText());
+					
+					//run BFS
+					try {
+						ArrayList<String> path = BFS(start,target);
+						setDisplay(path);
+						outputText.setText(displayText);
+					} catch (IOException e1) {
+						outputText.setText("Error :|");
+						System.out.println(e1);
+					}
+					
+				}
+				
+			});
 			
 			//MAIN FRAME
 			JFrame frame = new JFrame();
@@ -130,26 +150,108 @@ public class WikiGame {
 		return site.replaceAll(" ", "_").toLowerCase();
 	}
 	
-	
-	
-	public void getLinks(String site) throws IOException {
+	public void setDisplay(ArrayList<String> path) {
 		
-		Document doc = Jsoup.connect("https://en.wikipedia.org/wiki/" + site).get();
+		//clear text
+		displayText = "";
+		
+		//add header 
+		displayText += "Here is the path I found: \n\n";
+		
+		for(String curr : path) {
+			displayText += curr + "\n";
+		}
+		
+	}
+	
+	
+	public ArrayList<String> BFS(String start, String target) throws IOException {
+		
+		//setup array list
+		ArrayList<String> toVisit = new ArrayList<String>();
+		
+		//get first page
+		Document doc = Jsoup.connect("https://en.wikipedia.org/wiki/" + start).get();
 		Element body = doc.select("div#bodyContent").first();
 		Elements links = body.select("a");
 		
+		System.out.println(links);
+		
 		//loop through all the hyperlinks
 		for(Element l : links) {
-			
-			if(l.attr(href) == "href") {
-				
+			//check if href
+			if(l.hasAttr("href")) {
+				//add to list
+				toVisit.add(l.attr("href"));
 			}
-			
-			System.out.println(l);
-			
 		}
 		
+		//keep track of what we have already visited
+		HashSet<String> visited = new HashSet<String>();
 		
+		//keep track of path
+		HashMap<String, String> leadsTo = new HashMap<String, String>();
+		
+		//SEARCH
+		while(!toVisit.isEmpty()) {
+			
+			//get element
+			String curr = toVisit.remove(0);
+			
+			//check if valid URL
+			if(curr.contains("/wiki/")){
+				
+				//get the page
+				Document docTemp = Jsoup.connect("https://en.wikipedia.org" + curr).get();
+	//			System.out.println("https://en.wikipedia.org" + curr);
+				Element bodyTemp = doc.select("div#bodyContent").first();
+				Elements linksTemp = body.select("a");
+				
+				//loop through all the hyperlinks
+				for(Element l : links) {
+					//check if href
+					if(l.hasAttr("href")) {
+						
+						//get string
+						String temp = l.attr("href").toLowerCase();
+						
+						
+						//check if visited
+						if(visited.contains(temp)) {
+							continue;
+						}
+							
+						//establish connection
+						leadsTo.put(temp, curr);
+							
+						//check if target
+						if(temp.contains(target)) {
+							return backTrace(temp, leadsTo);
+						}
+							
+						else {
+							toVisit.add(temp);
+							visited.add(curr);
+						}
+						
+					}
+				}
+			}
+		}
+		return null;
+	}
+	
+	public ArrayList<String> backTrace(String target, HashMap<String, String> leadsTo) { 
+		
+		String curr = target;
+		ArrayList<String> path = new ArrayList<String>();
+		
+		while(curr != null) {
+			path.add(0, curr);
+			curr = leadsTo.get(curr);
+		}
+		
+		return path;
 	}
 	
 	
